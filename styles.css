@@ -188,7 +188,33 @@ button {
   flex: 1 1 auto;
 }
 
-/* ============ Bottom segmented toggle ============ */
+/* ============ Categories side-by-side (OT | NT) ============ */
+#categories-view .scroll-area {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr;
+  column-gap: 8px;
+  overflow: hidden;
+}
+
+#categories-view .scroll-area > .testament-label:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+#categories-view .scroll-area > .testament-label:nth-of-type(2) { grid-column: 2; grid-row: 1; }
+#categories-view #categories-ot { grid-column: 1; grid-row: 2; overflow-y: auto; min-height: 0; }
+#categories-view #categories-nt { grid-column: 2; grid-row: 2; overflow-y: auto; min-height: 0; }
+
+#categories-view .big-list li button {
+  padding: 14px 18px 12px;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 480px) {
+  #categories-view .big-list li button {
+    padding: 12px 14px 10px;
+    font-size: 0.95rem;
+  }
+  #categories-view .testament-label { padding: 14px 14px 4px; font-size: 0.7rem; }
+  #categories-view .big-list li button .row-sub { font-size: 0.75rem; }
+}
 .bottom-toggle {
   margin: 0 auto calc(var(--safe-bottom) + 18px);
   display: inline-flex;
@@ -511,16 +537,14 @@ button {
   .screen.active { transform: translateX(-50%); }
   #home-view { transform: translateX(-50%); }
 
-  /* Two-column lists on desktop so 39 books fit without scrolling */
-  .scroll-area .big-list,
+  /* Books-view (single category) on laptop: 2 columns so all books fit */
   #books-view .big-list {
     column-count: 2;
     column-gap: 0;
     padding-bottom: 24px;
   }
-  .big-list li { break-inside: avoid; }
-  .big-list li button { padding: 12px 32px 10px; font-size: 1.15rem; }
-  .testament-label { padding: 14px 32px 4px; column-span: all; }
+  #books-view .big-list li { break-inside: avoid; }
+  #books-view .big-list li button { padding: 12px 32px 10px; font-size: 1.15rem; }
 
   .chapters-grid {
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
