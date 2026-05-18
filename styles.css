@@ -25,8 +25,9 @@ html, body {
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
-  min-height: 100vh;
-  overscroll-behavior-y: contain;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 button {
@@ -40,7 +41,10 @@ button {
 /* ============ App / screens ============ */
 #app {
   position: relative;
-  min-height: 100vh;
+  width: 100%;
+  height: 100dvh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .screen {
@@ -53,6 +57,7 @@ button {
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   z-index: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .screen.active {
@@ -121,6 +126,7 @@ button {
   padding: 0 0 16px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 .big-list li {
@@ -175,6 +181,7 @@ button {
   flex: 1 1 auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 #books-view .big-list {
@@ -212,22 +219,23 @@ button {
 .home-header {
   grid-template-columns: 1fr;
   text-align: center;
-  padding-top: calc(var(--safe-top) + 40px);
+  padding-top: calc(var(--safe-top) + clamp(16px, 4vh, 40px));
   padding-bottom: 0;
 }
 
 .home-title {
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 2.6rem;
+  font-size: clamp(1.8rem, 5vh, 2.6rem);
   margin: 0;
   letter-spacing: 0.01em;
+  line-height: 1.1;
 }
 
 .home-sub {
   display: block;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   margin-top: 4px;
 }
 
@@ -237,20 +245,26 @@ button {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 24px;
-  gap: 32px;
+  padding: clamp(16px, 3vh, 24px);
+  gap: clamp(16px, 3.5vh, 32px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .daily-verse {
   font-family: var(--serif);
-  font-size: 1.25rem;
-  line-height: 1.6;
+  font-size: clamp(1rem, 2.2vh, 1.25rem);
+  line-height: 1.5;
   font-style: italic;
   max-width: 520px;
   text-align: center;
   margin: 0;
   border-left: none;
   padding: 0 12px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 .daily-verse cite {
@@ -383,12 +397,14 @@ button {
 
 /* ============ Chapters grid ============ */
 .chapters-grid {
-  flex: 1;
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 10px;
   padding: 18px 24px calc(var(--safe-bottom) + 18px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
   align-content: start;
 }
 
@@ -417,8 +433,10 @@ button {
 
 /* ============ Reader ============ */
 .reader {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
   padding: 8px 28px 16px;
   font-family: var(--serif);
   font-size: 1.15rem;
@@ -465,13 +483,56 @@ button {
   opacity: 0.3;
 }
 
-/* ============ Larger screens ============ */
-@media (min-width: 720px) {
-  .screen { max-width: 480px; left: 50%; transform: translateX(calc(-50% + 100vw)); }
+/* ============ Tablet ============ */
+@media (min-width: 720px) and (max-width: 1023px) {
+  .screen {
+    max-width: 640px;
+    left: 50%;
+    transform: translateX(calc(-50% + 100vw));
+    box-shadow: 0 0 60px rgba(0,0,0,0.5);
+  }
   .screen.active { transform: translateX(-50%); }
   #home-view { transform: translateX(-50%); }
-  body {
-    background: #050505;
+  body { background: #050505; }
+
+  .big-list li button { padding: 14px 28px 12px; font-size: 1.3rem; }
+  .testament-label { padding: 14px 28px 4px; }
+}
+
+/* ============ Laptop / desktop ============ */
+@media (min-width: 1024px) {
+  body { background: #050505; }
+  .screen {
+    max-width: 1100px;
+    left: 50%;
+    transform: translateX(calc(-50% + 100vw));
+    box-shadow: 0 0 80px rgba(0,0,0,0.6);
   }
-  .screen { box-shadow: 0 0 60px rgba(0,0,0,0.5); }
+  .screen.active { transform: translateX(-50%); }
+  #home-view { transform: translateX(-50%); }
+
+  /* Two-column lists on desktop so 39 books fit without scrolling */
+  .scroll-area .big-list,
+  #books-view .big-list {
+    column-count: 2;
+    column-gap: 0;
+    padding-bottom: 24px;
+  }
+  .big-list li { break-inside: avoid; }
+  .big-list li button { padding: 12px 32px 10px; font-size: 1.15rem; }
+  .testament-label { padding: 14px 32px 4px; column-span: all; }
+
+  .chapters-grid {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    padding: 24px 40px calc(var(--safe-bottom) + 24px);
+    gap: 12px;
+  }
+  .reader {
+    padding: 12px max(40px, calc(50% - 360px)) 20px;
+    font-size: 1.2rem;
+  }
+  .reader-nav, .reader-actions {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
 }
