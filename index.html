@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>Bijbel</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- HOME -->
+    <section id="home-view" class="screen active">
+      <header class="screen-header home-header">
+        <h1 class="home-title">Bijbel</h1>
+        <span class="home-sub">Statenvertaling</span>
+      </header>
+      <div class="home-body">
+        <blockquote class="daily-verse" id="daily-verse">
+          <p>—</p>
+          <cite></cite>
+        </blockquote>
+        <button class="cta-btn" id="open-categories">Boeken openen</button>
+      </div>
+    </section>
+
+    <!-- CATEGORIES (de extra laag: De Wet, Historisch, …) -->
+    <section id="categories-view" class="screen">
+      <header class="screen-header">
+        <button class="icon-circle" data-action="back-to-home" aria-label="Sluiten">✕</button>
+        <h2 class="screen-title">Boeken</h2>
+        <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
+      </header>
+
+      <div class="testament-label">Oude Testament</div>
+      <ul class="big-list" id="categories-ot"></ul>
+
+      <div class="testament-label">Nieuwe Testament</div>
+      <ul class="big-list" id="categories-nt"></ul>
+
+      <div class="bottom-toggle" role="tablist">
+        <button class="toggle-btn active" data-mode="traditioneel" role="tab">Traditioneel</button>
+        <button class="toggle-btn" data-mode="alfabetisch" role="tab">Alfabetisch</button>
+      </div>
+    </section>
+
+    <!-- BOOKS in gekozen categorie -->
+    <section id="books-view" class="screen">
+      <header class="screen-header">
+        <button class="icon-circle" data-action="back-to-categories" aria-label="Terug">✕</button>
+        <h2 class="screen-title" id="books-title">—</h2>
+        <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
+      </header>
+      <ul class="big-list" id="books-list"></ul>
+    </section>
+
+    <!-- CHAPTERS van een boek -->
+    <section id="chapters-view" class="screen">
+      <header class="screen-header">
+        <button class="icon-circle" data-action="back-to-books" aria-label="Terug">✕</button>
+        <h2 class="screen-title" id="chapters-title">—</h2>
+        <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
+      </header>
+      <div class="chapters-grid" id="chapters-grid"></div>
+    </section>
+
+    <!-- READER -->
+    <section id="reader-view" class="screen">
+      <header class="screen-header">
+        <button class="icon-circle" data-action="back-to-chapters" aria-label="Terug">✕</button>
+        <h2 class="screen-title" id="reader-title">—</h2>
+        <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
+      </header>
+      <article class="reader" id="reader-content"></article>
+      <nav class="reader-nav">
+        <button class="nav-btn" id="prev-chapter">‹ Vorige</button>
+        <button class="nav-btn" id="next-chapter">Volgende ›</button>
+      </nav>
+    </section>
+
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
