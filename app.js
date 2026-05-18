@@ -14,6 +14,16 @@
   const bookById = Object.fromEntries(allBooks.map((b) => [b.id, b]));
   const TOTAL_CHAPTERS = allBooks.reduce((sum, b) => sum + b.chapters, 0);
 
+  // ---- Supabase client ------------------------------------------------
+  const SUPABASE_URL = 'https://kgfbjcecvwaumauhqhpg.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_HeBhlxA4xsU6BiJEi6tKmg_VDLSIgSG';
+  const sb = window.supabase && window.supabase.createClient
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      })
+    : null;
+  let currentUser = null;
+
   // ---- Progress store (localStorage) ---------------------------------
   // Schema: { [bookId]: [chapterNumbers...] }
   const STORAGE_KEY = 'bijbel.progress.v1';
@@ -56,6 +66,17 @@
     if (read) progress[bookId].add(chapter);
     else progress[bookId].delete(chapter);
     saveProgress(progress);
+    if (currentUser && sb) {
+      sb.from('reading_progress')
+        .upsert({
+          user_id: currentUser.id,
+          book_id: bookId,
+          chapter,
+          is_read: read,
+          read_at: read ? new Date().toISOString() : null,
+        }, { onConflict: 'user_id,book_id,chapter' })
+        .then(({ error }) => error && console.warn('sync setRead', error));
+    }
   }
 
   function readCount(bookId) {
@@ -71,6 +92,16 @@
     if (!visited[bookId].has(chapter)) {
       visited[bookId].add(chapter);
       saveVisited(visited);
+      if (currentUser && sb) {
+        sb.from('reading_progress')
+          .upsert({
+            user_id: currentUser.id,
+            book_id: bookId,
+            chapter,
+            is_read: false,
+          }, { onConflict: 'user_id,book_id,chapter', ignoreDuplicates: true })
+          .then(({ error }) => error && console.warn('sync markVisited', error));
+      }
     }
   }
 
@@ -101,9 +132,23 @@
   }
   function saveLastRead(bookId, chapter) {
     localStorage.setItem(LAST_READ_KEY, JSON.stringify({ bookId, chapter }));
+    if (currentUser && sb) {
+      sb.from('last_read')
+        .upsert({
+          user_id: currentUser.id,
+          book_id: bookId,
+          chapter,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+        .then(({ error }) => error && console.warn('sync lastRead', error));
+    }
   }
   function clearLastRead() {
     localStorage.removeItem(LAST_READ_KEY);
+    if (currentUser && sb) {
+      sb.from('last_read').delete().eq('user_id', currentUser.id)
+        .then(({ error }) => error && console.warn('sync clearLastRead', error));
+    }
   }
 
   // ---- Screen navigation ---------------------------------------------
@@ -305,14 +350,132 @@
 
   $('#open-settings').addEventListener('click', () => show('settings'));
 
-  const notYetWired = (msg) => () => alert(msg);
-  $('#login-google').addEventListener('click', notYetWired(
-    'Inloggen met Google is bijna klaar. Zodra Supabase is gekoppeld kun je hier inloggen.'
-  ));
-  $('#create-account').addEventListener('click', notYetWired(
-    'Account aanmaken volgt zodra de inlog-koppeling met Supabase actief is.'
-  ));
-  $('#open-help').addEventListener('click', notYetWired(
+  function updateAccountUI() {
+    const card = $('.settings-account-card');
+    if (!card) return;
+    const title = card.querySelector('.account-card-title');
+    const sub = card.querySelector('.account-card-sub');
+    const loginBtn = $('#login-google');
+    const registerBtn = $('#create-account');
+    let logoutBtn = $('#logout-btn');
+
+    if (currentUser) {
+      const name = currentUser.user_metadata?.full_name
+        || currentUser.user_metadata?.name
+        || currentUser.email
+        || 'Ingelogd';
+      title.textContent = name;
+      sub.textContent = currentUser.email || 'Je voortgang wordt automatisch gesynchroniseerd.';
+      loginBtn.classList.add('hidden');
+      registerBtn.classList.add('hidden');
+      if (!logoutBtn) {
+        logoutBtn = document.createElement('button');
+        logoutBtn.id = 'logout-btn';
+        logoutBtn.type = 'button';
+        logoutBtn.className = 'link-btn account-register-btn';
+        logoutBtn.textContent = 'Uitloggen';
+        logoutBtn.addEventListener('click', async () => {
+          if (sb) await sb.auth.signOut();
+        });
+        card.appendChild(logoutBtn);
+      } else {
+        logoutBtn.classList.remove('hidden');
+      }
+    } else {
+      title.textContent = 'Niet ingelogd';
+      sub.textContent = 'Log in om je voortgang op te slaan en te synchroniseren tussen apparaten.';
+      loginBtn.classList.remove('hidden');
+      registerBtn.classList.remove('hidden');
+      if (logoutBtn) logoutBtn.classList.add('hidden');
+    }
+  }
+
+  async function pullFromServer() {
+    if (!currentUser || !sb) return;
+    const { data, error } = await sb
+      .from('reading_progress')
+      .select('book_id, chapter, is_read');
+    if (error) { console.warn('pull progress', error); return; }
+    (data || []).forEach((row) => {
+      if (row.is_read) {
+        if (!progress[row.book_id]) progress[row.book_id] = new Set();
+        progress[row.book_id].add(row.chapter);
+      } else {
+        if (!visited[row.book_id]) visited[row.book_id] = new Set();
+        visited[row.book_id].add(row.chapter);
+      }
+    });
+    saveProgress(progress);
+    saveVisited(visited);
+
+    const { data: lr } = await sb
+      .from('last_read').select('book_id, chapter').maybeSingle();
+    if (lr) localStorage.setItem(LAST_READ_KEY, JSON.stringify({ bookId: lr.book_id, chapter: lr.chapter }));
+  }
+
+  async function pushLocalToServer() {
+    if (!currentUser || !sb) return;
+    const rows = [];
+    Object.keys(progress).forEach((bookId) => {
+      progress[bookId].forEach((chapter) => {
+        rows.push({ user_id: currentUser.id, book_id: bookId, chapter, is_read: true });
+      });
+    });
+    Object.keys(visited).forEach((bookId) => {
+      visited[bookId].forEach((chapter) => {
+        if (!progress[bookId]?.has(chapter)) {
+          rows.push({ user_id: currentUser.id, book_id: bookId, chapter, is_read: false });
+        }
+      });
+    });
+    if (rows.length) {
+      const { error } = await sb.from('reading_progress')
+        .upsert(rows, { onConflict: 'user_id,book_id,chapter', ignoreDuplicates: true });
+      if (error) console.warn('push progress', error);
+    }
+    const last = loadLastRead();
+    if (last) {
+      const { error } = await sb.from('last_read')
+        .upsert({ user_id: currentUser.id, book_id: last.bookId, chapter: last.chapter,
+                  updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (error) console.warn('push lastRead', error);
+    }
+  }
+
+  async function syncAfterLogin() {
+    await pullFromServer();
+    await pushLocalToServer();
+    renderOverallProgress();
+    renderContinueReading();
+    if ($('#categories-view').classList.contains('active')) renderBooksForTab();
+    if ($('#chapters-view').classList.contains('active') && state.currentBook) renderChaptersGrid();
+  }
+
+  if (sb) {
+    sb.auth.getSession().then(({ data }) => {
+      currentUser = data.session?.user ?? null;
+      updateAccountUI();
+      if (currentUser) syncAfterLogin();
+    });
+    sb.auth.onAuthStateChange((event, session) => {
+      currentUser = session?.user ?? null;
+      updateAccountUI();
+      if (event === 'SIGNED_IN') syncAfterLogin();
+    });
+  }
+
+  const startGoogleLogin = async () => {
+    if (!sb) { alert('Supabase client kon niet geladen worden.'); return; }
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) alert('Inloggen mislukt: ' + error.message);
+  };
+  $('#login-google').addEventListener('click', startGoogleLogin);
+  $('#create-account').addEventListener('click', startGoogleLogin);
+
+  $('#open-help').addEventListener('click', () => alert(
     'Hulp & ondersteuning komt binnenkort. Voor nu kun je je vraag stellen aan de beheerder.'
   ));
 
@@ -368,13 +531,17 @@
 
   $('#mark-read-btn').addEventListener('click', toggleCurrentRead);
 
-  $('#reset-progress').addEventListener('click', () => {
+  $('#reset-progress').addEventListener('click', async () => {
     if (!confirm('Weet je zeker dat je alle leesvoortgang wilt wissen?')) return;
     Object.keys(progress).forEach((k) => delete progress[k]);
     Object.keys(visited).forEach((k) => delete visited[k]);
     saveProgress(progress);
     saveVisited(visited);
     clearLastRead();
+    if (currentUser && sb) {
+      const { error: e1 } = await sb.from('reading_progress').delete().eq('user_id', currentUser.id);
+      if (e1) console.warn('reset progress', e1);
+    }
     renderOverallProgress();
     renderBooksForTab();
     renderContinueReading();
