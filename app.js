@@ -17,10 +17,11 @@
   // ---- Progress store (localStorage) ---------------------------------
   // Schema: { [bookId]: [chapterNumbers...] }
   const STORAGE_KEY = 'bijbel.progress.v1';
+  const VISITED_KEY = 'bijbel.visited.v1';
 
-  function loadProgress() {
+  function loadSetMap(key) {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(key);
       if (!raw) return {};
       const parsed = JSON.parse(raw);
       const out = {};
@@ -33,13 +34,18 @@
     }
   }
 
-  function saveProgress(p) {
+  function saveSetMap(key, map) {
     const serialisable = {};
-    Object.keys(p).forEach((id) => {
-      serialisable[id] = Array.from(p[id]);
+    Object.keys(map).forEach((id) => {
+      serialisable[id] = Array.from(map[id]);
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialisable));
+    localStorage.setItem(key, JSON.stringify(serialisable));
   }
+
+  const loadProgress = () => loadSetMap(STORAGE_KEY);
+  const saveProgress = (p) => saveSetMap(STORAGE_KEY, p);
+  const loadVisited = () => loadSetMap(VISITED_KEY);
+  const saveVisited = (v) => saveSetMap(VISITED_KEY, v);
 
   function isRead(bookId, chapter) {
     return progress[bookId]?.has(chapter) ?? false;
@@ -56,6 +62,18 @@
     return progress[bookId]?.size ?? 0;
   }
 
+  function isVisited(bookId, chapter) {
+    return visited[bookId]?.has(chapter) ?? false;
+  }
+
+  function markVisited(bookId, chapter) {
+    if (!visited[bookId]) visited[bookId] = new Set();
+    if (!visited[bookId].has(chapter)) {
+      visited[bookId].add(chapter);
+      saveVisited(visited);
+    }
+  }
+
   function overallProgress() {
     let read = 0;
     allBooks.forEach((b) => (read += readCount(b.id)));
@@ -64,11 +82,28 @@
 
   // ---- App state ------------------------------------------------------
   const progress = loadProgress();
+  const visited = loadVisited();
+  const LAST_READ_KEY = 'bijbel.lastread.v1';
   const state = {
     currentTab: 'ALL', // 'OT' | 'ALL' | 'NT'
     currentBook: null,
     currentChapter: null,
   };
+
+  function loadLastRead() {
+    try {
+      const raw = localStorage.getItem(LAST_READ_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+  function saveLastRead(bookId, chapter) {
+    localStorage.setItem(LAST_READ_KEY, JSON.stringify({ bookId, chapter }));
+  }
+  function clearLastRead() {
+    localStorage.removeItem(LAST_READ_KEY);
+  }
 
   // ---- Screen navigation ---------------------------------------------
   const screens = {
@@ -76,6 +111,7 @@
     categories: $('#categories-view'),
     chapters:   $('#chapters-view'),
     reader:     $('#reader-view'),
+    settings:   $('#settings-view'),
   };
 
   function show(name) {
@@ -128,6 +164,23 @@
     $('#progress-chip-chapters').textContent = read + ' hfst.';
   }
 
+  function renderContinueReading() {
+    const last = loadLastRead();
+    const btn = $('#continue-reading');
+    if (!last || !bookById[last.bookId]) {
+      btn.classList.add('hidden');
+      return;
+    }
+    const book = bookById[last.bookId];
+    if (last.chapter < 1 || last.chapter > book.chapters) {
+      btn.classList.add('hidden');
+      return;
+    }
+    btn.classList.remove('hidden');
+    $('#continue-reading-where').textContent = `${book.name} ${last.chapter}`;
+    btn.onclick = () => openChapter(book, last.chapter);
+  }
+
   // ---- Books screen (3 tabbladen: OT / Alle / NT) --------------------
   function renderBooksForTab() {
     const list = $('#books-tab-list');
@@ -173,6 +226,7 @@
       btn.textContent = i;
       if (BIBLE_TEXT[`${book.id}.${i}`]) btn.classList.add('has-text');
       if (isRead(book.id, i)) btn.classList.add('is-read');
+      else if (isVisited(book.id, i)) btn.classList.add('is-visited');
       btn.addEventListener('click', () => openChapter(book, i));
       grid.appendChild(btn);
     }
@@ -182,6 +236,8 @@
   function openChapter(book, chapter) {
     state.currentBook = book;
     state.currentChapter = chapter;
+    markVisited(book.id, chapter);
+    saveLastRead(book.id, chapter);
     $('#reader-title').textContent = `${book.name} ${chapter}`;
 
     const key = `${book.id}.${chapter}`;
@@ -235,12 +291,15 @@
     show('categories');
   });
 
+  $('#open-settings').addEventListener('click', () => show('settings'));
+
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     switch (btn.dataset.action) {
       case 'back-to-home':
         renderOverallProgress();
+        renderContinueReading();
         show('home');
         break;
       case 'back-to-books':
@@ -279,14 +338,20 @@
   $('#reset-progress').addEventListener('click', () => {
     if (!confirm('Weet je zeker dat je alle leesvoortgang wilt wissen?')) return;
     Object.keys(progress).forEach((k) => delete progress[k]);
+    Object.keys(visited).forEach((k) => delete visited[k]);
     saveProgress(progress);
+    saveVisited(visited);
+    clearLastRead();
     renderOverallProgress();
     renderBooksForTab();
+    renderContinueReading();
+    show('home');
   });
 
   // ---- Init ----------------------------------------------------------
   renderDailyVerse();
   renderOverallProgress();
+  renderContinueReading();
   renderBooksForTab();
   show('home');
 })();

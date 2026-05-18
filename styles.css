@@ -237,6 +237,81 @@ button {
   color: var(--text);
 }
 
+/* ============ Home account button (top-left) ============ */
+.home-account {
+  position: absolute;
+  top: calc(var(--safe-top) + 12px);
+  left: 18px;
+  z-index: 3;
+}
+
+.hidden { display: none !important; }
+
+/* ============ Settings screen ============ */
+.settings-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  padding: 8px 0 calc(var(--safe-bottom) + 24px);
+}
+.settings-section {
+  margin-top: 18px;
+}
+.settings-section-title {
+  padding: 0 24px 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 14px 24px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1rem;
+  transition: background 0.1s ease;
+}
+.settings-row + .settings-row { border-top: 1px solid var(--border); }
+.settings-row:active { background: var(--row-active); }
+@media (hover: hover) {
+  .settings-row:not(.settings-row-static):hover { background: var(--row-hover); }
+}
+.settings-row .row-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.settings-row-danger { color: #ff8a8a; }
+.settings-row-danger:active { background: rgba(255, 80, 80, 0.08); }
+.settings-row-static { cursor: default; }
+.settings-row-static:active { background: transparent; }
+
+/* ============ Continue-reading CTA ============ */
+.cta-secondary {
+  background: var(--circle-bg);
+  color: var(--text);
+  border: 1px solid var(--circle-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 22px;
+}
+.cta-secondary .cta-label { font-weight: 600; }
+.cta-secondary .cta-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* ============ Progress chip (top of home) ============ */
 .progress-chip {
   position: absolute;
@@ -413,11 +488,16 @@ button {
   font-weight: 500;
 }
 
-/* Reader chapters grid: "read" state */
-.chapters-grid button.is-read {
-  background: rgba(212, 163, 115, 0.18);
+/* Chapter button states: visited = orange, read = green */
+.chapters-grid button.is-visited {
+  background: rgba(212, 163, 115, 0.22);
   border-color: var(--accent);
   color: var(--accent);
+}
+.chapters-grid button.is-read {
+  background: rgba(106, 191, 105, 0.22);
+  border-color: rgba(106, 191, 105, 0.55);
+  color: #a8e0a7;
 }
 
 /* Reader mark-as-read action bar */
