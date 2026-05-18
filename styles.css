@@ -237,6 +237,34 @@ button {
   color: var(--text);
 }
 
+/* ============ Progress chip (top of home) ============ */
+.progress-chip {
+  position: absolute;
+  top: calc(var(--safe-top) + 14px);
+  right: 18px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--circle-border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.progress-chip .chip-icon { font-size: 0.95rem; }
+.progress-chip .chip-dot { opacity: 0.45; }
+.progress-chip .chip-pct { color: var(--accent); font-weight: 600; }
+.progress-chip .chip-chapters { color: var(--text); }
+
+@media (max-width: 380px) {
+  .progress-chip { font-size: 0.74rem; padding: 5px 10px; right: 14px; gap: 5px; }
+  .progress-chip .chip-icon { font-size: 0.85rem; }
+}
+
 /* ============ Home ============ */
 .home-header {
   grid-template-columns: 1fr;

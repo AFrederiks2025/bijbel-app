@@ -123,6 +123,9 @@
     const fill = $('#overall-progress-fill');
     fill.style.width = pct + '%';
     fill.classList.toggle('complete', read === total);
+
+    $('#progress-chip-pct').textContent = pct + '%';
+    $('#progress-chip-chapters').textContent = read + ' hfst.';
   }
 
   // ---- Books screen (3 tabbladen: OT / Alle / NT) --------------------
