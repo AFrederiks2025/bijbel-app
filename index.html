@@ -37,7 +37,7 @@
       </div>
     </section>
 
-    <!-- CATEGORIES (de extra laag: De Wet, Historisch, …) -->
+    <!-- BOEKEN met 3 tabbladen (OT / Alle / NT) -->
     <section id="categories-view" class="screen">
       <header class="screen-header">
         <button class="icon-circle" data-action="back-to-home" aria-label="Sluiten">✕</button>
@@ -45,28 +45,13 @@
         <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
       </header>
 
-      <div class="scroll-area">
-        <div class="testament-label">Oude Testament</div>
-        <ul class="big-list" id="categories-ot"></ul>
-
-        <div class="testament-label">Nieuwe Testament</div>
-        <ul class="big-list" id="categories-nt"></ul>
+      <div class="top-tabs" role="tablist">
+        <button class="tab-btn" data-tab="OT" role="tab">Oude Testament</button>
+        <button class="tab-btn active" data-tab="ALL" role="tab">Alle boeken</button>
+        <button class="tab-btn" data-tab="NT" role="tab">Nieuwe Testament</button>
       </div>
 
-      <div class="bottom-toggle" role="tablist">
-        <button class="toggle-btn active" data-mode="traditioneel" role="tab">Traditioneel</button>
-        <button class="toggle-btn" data-mode="alfabetisch" role="tab">Alfabetisch</button>
-      </div>
-    </section>
-
-    <!-- BOOKS in gekozen categorie -->
-    <section id="books-view" class="screen">
-      <header class="screen-header">
-        <button class="icon-circle" data-action="back-to-categories" aria-label="Terug">✕</button>
-        <h2 class="screen-title" id="books-title">—</h2>
-        <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
-      </header>
-      <ul class="big-list" id="books-list"></ul>
+      <ul class="big-list" id="books-tab-list"></ul>
     </section>
 
     <!-- CHAPTERS van een boek -->

@@ -1,6 +1,6 @@
 // =====================================================================
 // Bijbel-app - navigatie, rendering & leesvoortgang
-// Schermen: Home -> Categorieën -> Boeken -> Hoofdstukken -> Lezer
+// Schermen: Home -> Boeken (3 tabs) -> Hoofdstukken -> Lezer
 // =====================================================================
 
 (function () {
@@ -56,18 +56,6 @@
     return progress[bookId]?.size ?? 0;
   }
 
-  function categoryProgress(category) {
-    let total = 0;
-    let read = 0;
-    category.bookIds.forEach((id) => {
-      const book = bookById[id];
-      if (!book) return;
-      total += book.chapters;
-      read += readCount(id);
-    });
-    return { read, total };
-  }
-
   function overallProgress() {
     let read = 0;
     allBooks.forEach((b) => (read += readCount(b.id)));
@@ -77,8 +65,7 @@
   // ---- App state ------------------------------------------------------
   const progress = loadProgress();
   const state = {
-    listMode: 'traditioneel', // 'traditioneel' | 'alfabetisch'
-    currentCategory: null,
+    currentTab: 'ALL', // 'OT' | 'ALL' | 'NT'
     currentBook: null,
     currentChapter: null,
   };
@@ -87,7 +74,6 @@
   const screens = {
     home:       $('#home-view'),
     categories: $('#categories-view'),
-    books:      $('#books-view'),
     chapters:   $('#chapters-view'),
     reader:     $('#reader-view'),
   };
@@ -139,44 +125,16 @@
     fill.classList.toggle('complete', read === total);
   }
 
-  // ---- Categories screen ---------------------------------------------
-  function renderCategories() {
-    if (state.listMode === 'alfabetisch') {
-      $('#categories-ot').innerHTML = '';
-      $('#categories-nt').innerHTML = '';
-      $$('#categories-view .testament-label').forEach((el) => (el.style.display = 'none'));
-
-      const sorted = [...allBooks].sort((a, b) =>
-        a.name.localeCompare(b.name, 'nl', { sensitivity: 'base' })
-      );
-      const ul = $('#categories-ot');
-      ul.style.display = '';
-      sorted.forEach((book) => {
-        ul.appendChild(buildBookListItem(book, () => openBookDirect(book)));
-      });
-      return;
-    }
-
-    $$('#categories-view .testament-label').forEach((el) => (el.style.display = ''));
-    const otUl = $('#categories-ot');
-    const ntUl = $('#categories-nt');
-    otUl.innerHTML = '';
-    ntUl.innerHTML = '';
-
-    BIBLE_CATEGORIES.forEach((cat) => {
-      const { read, total } = categoryProgress(cat);
-      const li = document.createElement('li');
-      const btn = document.createElement('button');
-      btn.innerHTML = `
-        <div class="row-top">
-          <span>${cat.name}</span>
-          <span class="row-sub">${cat.subtitle}</span>
-        </div>
-        ${progressBar(read, total)}
-      `;
-      btn.addEventListener('click', () => openCategory(cat));
-      li.appendChild(btn);
-      (cat.testament === 'OT' ? otUl : ntUl).appendChild(li);
+  // ---- Books screen (3 tabbladen: OT / Alle / NT) --------------------
+  function renderBooksForTab() {
+    const list = $('#books-tab-list');
+    list.innerHTML = '';
+    let books;
+    if (state.currentTab === 'OT') books = BIBLE_BOOKS.OT;
+    else if (state.currentTab === 'NT') books = BIBLE_BOOKS.NT;
+    else books = allBooks;
+    books.forEach((book) => {
+      list.appendChild(buildBookListItem(book, () => openBook(book)));
     });
   }
 
@@ -193,25 +151,6 @@
     btn.addEventListener('click', onClick);
     li.appendChild(btn);
     return li;
-  }
-
-  // ---- Books in category ---------------------------------------------
-  function openCategory(category) {
-    state.currentCategory = category;
-    $('#books-title').textContent = category.name;
-    const list = $('#books-list');
-    list.innerHTML = '';
-    category.bookIds.forEach((id) => {
-      const book = bookById[id];
-      if (!book) return;
-      list.appendChild(buildBookListItem(book, () => openBook(book)));
-    });
-    show('books');
-  }
-
-  function openBookDirect(book) {
-    state.currentCategory = null;
-    openBook(book);
   }
 
   // ---- Chapters of a book --------------------------------------------
@@ -288,29 +227,22 @@
   }
 
   // ---- Wiring --------------------------------------------------------
-  $('#open-categories').addEventListener('click', () => show('categories'));
+  $('#open-categories').addEventListener('click', () => {
+    renderBooksForTab();
+    show('categories');
+  });
 
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     switch (btn.dataset.action) {
       case 'back-to-home':
-        renderCategories();
         renderOverallProgress();
         show('home');
         break;
-      case 'back-to-categories':
-        renderCategories();
-        show('categories');
-        break;
       case 'back-to-books':
-        if (state.currentCategory) {
-          // Refresh book list so progress bars update.
-          openCategory(state.currentCategory);
-        } else {
-          renderCategories();
-          show('categories');
-        }
+        renderBooksForTab();
+        show('categories');
         break;
       case 'back-to-chapters':
         renderChaptersGrid();
@@ -319,12 +251,12 @@
     }
   });
 
-  $$('.toggle-btn').forEach((btn) => {
+  $$('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      $$('.toggle-btn').forEach((b) => b.classList.remove('active'));
+      $$('.tab-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      state.listMode = btn.dataset.mode;
-      renderCategories();
+      state.currentTab = btn.dataset.tab;
+      renderBooksForTab();
     });
   });
 
@@ -346,12 +278,12 @@
     Object.keys(progress).forEach((k) => delete progress[k]);
     saveProgress(progress);
     renderOverallProgress();
-    renderCategories();
+    renderBooksForTab();
   });
 
   // ---- Init ----------------------------------------------------------
   renderDailyVerse();
   renderOverallProgress();
-  renderCategories();
+  renderBooksForTab();
   show('home');
 })();

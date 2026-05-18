@@ -171,49 +171,45 @@ button {
   .big-list li button:hover { background: var(--row-hover); }
 }
 
-/* Scroll container fills available space and pushes toggle to bottom */
-#categories-view, #books-view, #chapters-view, #reader-view {
+#categories-view, #chapters-view, #reader-view {
   display: flex;
   flex-direction: column;
 }
 
-.scroll-area {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  min-height: 0;
-}
-
-#books-view .big-list {
+#books-tab-list {
   flex: 1 1 auto;
 }
 
-/* ============ Categories side-by-side (OT | NT) ============ */
-#categories-view .scroll-area {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr;
-  column-gap: 8px;
+/* ============ Top tabs (OT / Alle / NT) ============ */
+.top-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
-
-#categories-view .scroll-area > .testament-label:nth-of-type(1) { grid-column: 1; grid-row: 1; }
-#categories-view .scroll-area > .testament-label:nth-of-type(2) { grid-column: 2; grid-row: 1; }
-#categories-view #categories-ot { grid-column: 1; grid-row: 2; overflow-y: auto; min-height: 0; }
-#categories-view #categories-nt { grid-column: 2; grid-row: 2; overflow-y: auto; min-height: 0; }
-
-#categories-view .big-list li button {
-  padding: 14px 18px 12px;
-  font-size: 1.1rem;
+.tab-btn.active {
+  background: rgba(255,255,255,0.14);
+  color: var(--text);
 }
+.tab-btn:active { transform: scale(0.98); }
 
-@media (max-width: 480px) {
-  #categories-view .big-list li button {
-    padding: 12px 14px 10px;
-    font-size: 0.95rem;
-  }
-  #categories-view .testament-label { padding: 14px 14px 4px; font-size: 0.7rem; }
-  #categories-view .big-list li button .row-sub { font-size: 0.75rem; }
+@media (max-width: 380px) {
+  .tab-btn { font-size: 0.72rem; padding: 9px 4px; }
 }
 .bottom-toggle {
   margin: 0 auto calc(var(--safe-bottom) + 18px);
@@ -537,14 +533,14 @@ button {
   .screen.active { transform: translateX(-50%); }
   #home-view { transform: translateX(-50%); }
 
-  /* Books-view (single category) on laptop: 2 columns so all books fit */
-  #books-view .big-list {
+  /* Two-column book list on laptop so up to 66 books fit in view */
+  #books-tab-list {
     column-count: 2;
     column-gap: 0;
     padding-bottom: 24px;
   }
-  #books-view .big-list li { break-inside: avoid; }
-  #books-view .big-list li button { padding: 12px 32px 10px; font-size: 1.15rem; }
+  #books-tab-list li { break-inside: avoid; }
+  #books-tab-list li button { padding: 12px 32px 10px; font-size: 1.15rem; }
 
   .chapters-grid {
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
