@@ -552,8 +552,9 @@ button {
   font-size: 0.78rem;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  min-width: 64px;
+  min-width: 110px;
   text-align: right;
+  white-space: nowrap;
 }
 
 /* Overall progress on home */

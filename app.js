@@ -125,12 +125,16 @@
   function progressBar(read, total) {
     const pct = total === 0 ? 0 : Math.round((read / total) * 100);
     const complete = read === total && total > 0;
+    const remaining = total - read;
+    const status = complete
+      ? 'Voltooid ✓'
+      : `${read}/${total} · nog ${remaining}`;
     return `
       <div class="row-progress">
         <div class="progress-bar">
           <div class="progress-bar-fill ${complete ? 'complete' : ''}" style="width:${pct}%"></div>
         </div>
-        <span class="progress-count">${read}/${total} hfst.</span>
+        <span class="progress-count">${status}</span>
       </div>
     `;
   }
@@ -203,12 +207,14 @@
   function buildBookListItem(book, onClick) {
     const li = document.createElement('li');
     const btn = document.createElement('button');
+    const read = readCount(book.id);
+    const pct = book.chapters === 0 ? 0 : Math.round((read / book.chapters) * 100);
     btn.innerHTML = `
       <div class="row-top">
         <span>${book.name}</span>
-        <span class="row-sub">${book.chapters} hfst.</span>
+        <span class="row-sub">${pct}% · ${book.chapters} hfst.</span>
       </div>
-      ${progressBar(readCount(book.id), book.chapters)}
+      ${progressBar(read, book.chapters)}
     `;
     btn.addEventListener('click', onClick);
     li.appendChild(btn);
