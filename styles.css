@@ -653,13 +653,7 @@ button {
   .screen.active { transform: translateX(-50%); }
   #home-view { transform: translateX(-50%); }
 
-  /* Two-column book list on laptop so up to 66 books fit in view */
-  #books-tab-list {
-    column-count: 2;
-    column-gap: 0;
-    padding-bottom: 24px;
-  }
-  #books-tab-list li { break-inside: avoid; }
+  #books-tab-list { padding-bottom: 24px; }
   #books-tab-list li button { padding: 12px 32px 10px; font-size: 1.15rem; }
 
   .chapters-grid {
