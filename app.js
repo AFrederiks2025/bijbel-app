@@ -299,6 +299,17 @@
 
   $('#open-settings').addEventListener('click', () => show('settings'));
 
+  const notYetWired = (msg) => () => alert(msg);
+  $('#login-google').addEventListener('click', notYetWired(
+    'Inloggen met Google is bijna klaar. Zodra Supabase is gekoppeld kun je hier inloggen.'
+  ));
+  $('#create-account').addEventListener('click', notYetWired(
+    'Account aanmaken volgt zodra de inlog-koppeling met Supabase actief is.'
+  ));
+  $('#open-help').addEventListener('click', notYetWired(
+    'Hulp & ondersteuning komt binnenkort. Voor nu kun je je vraag stellen aan de beheerder.'
+  ));
+
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
