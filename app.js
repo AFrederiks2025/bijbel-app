@@ -1,5 +1,5 @@
 // =====================================================================
-// Bijbel-app - navigatie & rendering
+// Bijbel-app - navigatie, rendering & leesvoortgang
 // Schermen: Home -> Categorieën -> Boeken -> Hoofdstukken -> Lezer
 // =====================================================================
 
@@ -12,8 +12,70 @@
 
   const allBooks = [...BIBLE_BOOKS.OT, ...BIBLE_BOOKS.NT];
   const bookById = Object.fromEntries(allBooks.map((b) => [b.id, b]));
+  const TOTAL_CHAPTERS = allBooks.reduce((sum, b) => sum + b.chapters, 0);
+
+  // ---- Progress store (localStorage) ---------------------------------
+  // Schema: { [bookId]: [chapterNumbers...] }
+  const STORAGE_KEY = 'bijbel.progress.v1';
+
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      const out = {};
+      Object.keys(parsed).forEach((id) => {
+        out[id] = new Set(parsed[id]);
+      });
+      return out;
+    } catch {
+      return {};
+    }
+  }
+
+  function saveProgress(p) {
+    const serialisable = {};
+    Object.keys(p).forEach((id) => {
+      serialisable[id] = Array.from(p[id]);
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialisable));
+  }
+
+  function isRead(bookId, chapter) {
+    return progress[bookId]?.has(chapter) ?? false;
+  }
+
+  function setRead(bookId, chapter, read) {
+    if (!progress[bookId]) progress[bookId] = new Set();
+    if (read) progress[bookId].add(chapter);
+    else progress[bookId].delete(chapter);
+    saveProgress(progress);
+  }
+
+  function readCount(bookId) {
+    return progress[bookId]?.size ?? 0;
+  }
+
+  function categoryProgress(category) {
+    let total = 0;
+    let read = 0;
+    category.bookIds.forEach((id) => {
+      const book = bookById[id];
+      if (!book) return;
+      total += book.chapters;
+      read += readCount(id);
+    });
+    return { read, total };
+  }
+
+  function overallProgress() {
+    let read = 0;
+    allBooks.forEach((b) => (read += readCount(b.id)));
+    return { read, total: TOTAL_CHAPTERS };
+  }
 
   // ---- App state ------------------------------------------------------
+  const progress = loadProgress();
   const state = {
     listMode: 'traditioneel', // 'traditioneel' | 'alfabetisch'
     currentCategory: null,
@@ -36,7 +98,21 @@
     });
   }
 
-  // ---- Home: vers van de dag -----------------------------------------
+  // ---- Progress bar element ------------------------------------------
+  function progressBar(read, total) {
+    const pct = total === 0 ? 0 : Math.round((read / total) * 100);
+    const complete = read === total && total > 0;
+    return `
+      <div class="row-progress">
+        <div class="progress-bar">
+          <div class="progress-bar-fill ${complete ? 'complete' : ''}" style="width:${pct}%"></div>
+        </div>
+        <span class="progress-count">${read}/${total} hfst.</span>
+      </div>
+    `;
+  }
+
+  // ---- Home: vers van de dag + overall progress ----------------------
   function renderDailyVerse() {
     const dayIndex = Math.floor(Date.now() / 86400000) % DAILY_VERSES.length;
     const entry = DAILY_VERSES[dayIndex];
@@ -54,11 +130,18 @@
     }
   }
 
+  function renderOverallProgress() {
+    const { read, total } = overallProgress();
+    const pct = Math.round((read / total) * 100);
+    $('#overall-progress-text').textContent = `${read} / ${total} hfst. · ${pct}%`;
+    const fill = $('#overall-progress-fill');
+    fill.style.width = pct + '%';
+    fill.classList.toggle('complete', read === total);
+  }
+
   // ---- Categories screen ---------------------------------------------
   function renderCategories() {
     if (state.listMode === 'alfabetisch') {
-      // Bij alfabetisch: alle boeken plat, op naam gesorteerd, geen categorieën.
-      // We hergebruiken de OT-container voor de hele lijst, NT-blok wordt verborgen.
       $('#categories-ot').innerHTML = '';
       $('#categories-nt').innerHTML = '';
       $$('#categories-view .testament-label').forEach((el) => (el.style.display = 'none'));
@@ -69,17 +152,11 @@
       const ul = $('#categories-ot');
       ul.style.display = '';
       sorted.forEach((book) => {
-        const li = document.createElement('li');
-        const btn = document.createElement('button');
-        btn.textContent = book.name;
-        btn.addEventListener('click', () => openBookDirect(book));
-        li.appendChild(btn);
-        ul.appendChild(li);
+        ul.appendChild(buildBookListItem(book, () => openBookDirect(book)));
       });
       return;
     }
 
-    // Traditioneel: categorieën onder elk testament.
     $$('#categories-view .testament-label').forEach((el) => (el.style.display = ''));
     const otUl = $('#categories-ot');
     const ntUl = $('#categories-nt');
@@ -87,15 +164,35 @@
     ntUl.innerHTML = '';
 
     BIBLE_CATEGORIES.forEach((cat) => {
+      const { read, total } = categoryProgress(cat);
       const li = document.createElement('li');
       const btn = document.createElement('button');
-      btn.innerHTML =
-        `<span>${cat.name}</span>` +
-        `<span class="row-sub">${cat.subtitle}</span>`;
+      btn.innerHTML = `
+        <div class="row-top">
+          <span>${cat.name}</span>
+          <span class="row-sub">${cat.subtitle}</span>
+        </div>
+        ${progressBar(read, total)}
+      `;
       btn.addEventListener('click', () => openCategory(cat));
       li.appendChild(btn);
       (cat.testament === 'OT' ? otUl : ntUl).appendChild(li);
     });
+  }
+
+  function buildBookListItem(book, onClick) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.innerHTML = `
+      <div class="row-top">
+        <span>${book.name}</span>
+        <span class="row-sub">${book.chapters} hfst.</span>
+      </div>
+      ${progressBar(readCount(book.id), book.chapters)}
+    `;
+    btn.addEventListener('click', onClick);
+    li.appendChild(btn);
+    return li;
   }
 
   // ---- Books in category ---------------------------------------------
@@ -107,20 +204,12 @@
     category.bookIds.forEach((id) => {
       const book = bookById[id];
       if (!book) return;
-      const li = document.createElement('li');
-      const btn = document.createElement('button');
-      btn.innerHTML =
-        `<span>${book.name}</span>` +
-        `<span class="row-sub">${book.chapters} hfst.</span>`;
-      btn.addEventListener('click', () => openBook(book));
-      li.appendChild(btn);
-      list.appendChild(li);
+      list.appendChild(buildBookListItem(book, () => openBook(book)));
     });
     show('books');
   }
 
   function openBookDirect(book) {
-    // Vanaf de alfabetische lijst springen we de boeken-tussenstap over.
     state.currentCategory = null;
     openBook(book);
   }
@@ -129,18 +218,22 @@
   function openBook(book) {
     state.currentBook = book;
     $('#chapters-title').textContent = book.name;
+    renderChaptersGrid();
+    show('chapters');
+  }
+
+  function renderChaptersGrid() {
+    const book = state.currentBook;
     const grid = $('#chapters-grid');
     grid.innerHTML = '';
     for (let i = 1; i <= book.chapters; i++) {
       const btn = document.createElement('button');
       btn.textContent = i;
-      if (BIBLE_TEXT[`${book.id}.${i}`]) {
-        btn.classList.add('has-text');
-      }
+      if (BIBLE_TEXT[`${book.id}.${i}`]) btn.classList.add('has-text');
+      if (isRead(book.id, i)) btn.classList.add('is-read');
       btn.addEventListener('click', () => openChapter(book, i));
       grid.appendChild(btn);
     }
-    show('chapters');
   }
 
   // ---- Reader --------------------------------------------------------
@@ -161,8 +254,7 @@
         .forEach((vn) => {
           const p = document.createElement('p');
           p.className = 'verse';
-          p.innerHTML =
-            `<span class="verse-num">${vn}</span>` + verses[vn];
+          p.innerHTML = `<span class="verse-num">${vn}</span>` + verses[vn];
           container.appendChild(p);
         });
     } else {
@@ -174,8 +266,25 @@
 
     $('#prev-chapter').disabled = chapter <= 1;
     $('#next-chapter').disabled = chapter >= book.chapters;
+    updateMarkButton();
+    container.scrollTop = 0;
 
     show('reader');
+  }
+
+  function updateMarkButton() {
+    const btn = $('#mark-read-btn');
+    const read = isRead(state.currentBook.id, state.currentChapter);
+    btn.classList.toggle('is-read', read);
+    btn.textContent = read ? '✓ Gelezen' : 'Markeer als gelezen';
+  }
+
+  function toggleCurrentRead() {
+    const { id } = state.currentBook;
+    const ch = state.currentChapter;
+    setRead(id, ch, !isRead(id, ch));
+    updateMarkButton();
+    renderOverallProgress();
   }
 
   // ---- Wiring --------------------------------------------------------
@@ -185,13 +294,28 @@
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     switch (btn.dataset.action) {
-      case 'back-to-home':       show('home'); break;
-      case 'back-to-categories': show('categories'); break;
-      case 'back-to-books':
-        if (state.currentCategory) show('books');
-        else show('categories');
+      case 'back-to-home':
+        renderCategories();
+        renderOverallProgress();
+        show('home');
         break;
-      case 'back-to-chapters':   show('chapters'); break;
+      case 'back-to-categories':
+        renderCategories();
+        show('categories');
+        break;
+      case 'back-to-books':
+        if (state.currentCategory) {
+          // Refresh book list so progress bars update.
+          openCategory(state.currentCategory);
+        } else {
+          renderCategories();
+          show('categories');
+        }
+        break;
+      case 'back-to-chapters':
+        renderChaptersGrid();
+        show('chapters');
+        break;
     }
   });
 
@@ -215,8 +339,19 @@
     }
   });
 
+  $('#mark-read-btn').addEventListener('click', toggleCurrentRead);
+
+  $('#reset-progress').addEventListener('click', () => {
+    if (!confirm('Weet je zeker dat je alle leesvoortgang wilt wissen?')) return;
+    Object.keys(progress).forEach((k) => delete progress[k]);
+    saveProgress(progress);
+    renderOverallProgress();
+    renderCategories();
+  });
+
   // ---- Init ----------------------------------------------------------
   renderDailyVerse();
+  renderOverallProgress();
   renderCategories();
   show('home');
 })();

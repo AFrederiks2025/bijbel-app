@@ -130,16 +130,23 @@ button {
 .big-list li button {
   width: 100%;
   text-align: left;
-  padding: 18px 24px;
-  font-size: 1.5rem;
+  padding: 16px 24px 14px;
+  font-size: 1.4rem;
   font-weight: 400;
   color: var(--text);
   border-radius: 0;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  transition: background 0.1s ease;
+}
+
+.big-list .row-top {
+  display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  transition: background 0.1s ease;
 }
 
 .big-list li button:active,
@@ -164,7 +171,12 @@ button {
   flex-direction: column;
 }
 
-#categories-view .big-list,
+.scroll-area {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 #books-view .big-list {
   flex: 1 1 auto;
 }
@@ -262,6 +274,112 @@ button {
 }
 
 .cta-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+.link-btn {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,0.18);
+  text-underline-offset: 3px;
+}
+
+.link-btn:active { color: var(--text); }
+
+/* ============ Progress bar (shared) ============ */
+.progress-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.25s ease;
+}
+
+.progress-bar-fill.complete {
+  background: #6abf69;
+}
+
+.big-list .row-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.big-list .row-progress .progress-bar {
+  flex: 1;
+}
+
+.big-list .row-progress .progress-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: right;
+}
+
+/* Overall progress on home */
+.overall-progress {
+  width: min(420px, 100%);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.overall-progress .progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.overall-progress .progress-label span:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Reader chapters grid: "read" state */
+.chapters-grid button.is-read {
+  background: rgba(212, 163, 115, 0.18);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Reader mark-as-read action bar */
+.reader-actions {
+  display: flex;
+  justify-content: center;
+  padding: 8px 24px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.mark-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--circle-bg);
+  border: 1px solid var(--circle-border);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.mark-btn.is-read {
+  background: rgba(106, 191, 105, 0.18);
+  border-color: rgba(106, 191, 105, 0.4);
+  color: #98d997;
+}
 
 /* ============ Chapters grid ============ */
 .chapters-grid {

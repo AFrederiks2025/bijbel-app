@@ -21,7 +21,19 @@
           <p>—</p>
           <cite></cite>
         </blockquote>
+
+        <div class="overall-progress" id="overall-progress">
+          <div class="progress-label">
+            <span>Mijn voortgang</span>
+            <span id="overall-progress-text">0 / 1189 hfst.</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar-fill" id="overall-progress-fill"></div>
+          </div>
+        </div>
+
         <button class="cta-btn" id="open-categories">Boeken openen</button>
+        <button class="link-btn" id="reset-progress">Voortgang wissen</button>
       </div>
     </section>
 
@@ -33,11 +45,13 @@
         <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
       </header>
 
-      <div class="testament-label">Oude Testament</div>
-      <ul class="big-list" id="categories-ot"></ul>
+      <div class="scroll-area">
+        <div class="testament-label">Oude Testament</div>
+        <ul class="big-list" id="categories-ot"></ul>
 
-      <div class="testament-label">Nieuwe Testament</div>
-      <ul class="big-list" id="categories-nt"></ul>
+        <div class="testament-label">Nieuwe Testament</div>
+        <ul class="big-list" id="categories-nt"></ul>
+      </div>
 
       <div class="bottom-toggle" role="tablist">
         <button class="toggle-btn active" data-mode="traditioneel" role="tab">Traditioneel</button>
@@ -73,6 +87,9 @@
         <button class="icon-circle" aria-label="Geschiedenis">⟲</button>
       </header>
       <article class="reader" id="reader-content"></article>
+      <div class="reader-actions">
+        <button class="mark-btn" id="mark-read-btn">Markeer als gelezen</button>
+      </div>
       <nav class="reader-nav">
         <button class="nav-btn" id="prev-chapter">‹ Vorige</button>
         <button class="nav-btn" id="next-chapter">Volgende ›</button>
