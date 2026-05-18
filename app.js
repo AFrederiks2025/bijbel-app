@@ -12,7 +12,23 @@
 
   const allBooks = [...BIBLE_BOOKS.OT, ...BIBLE_BOOKS.NT];
   const bookById = Object.fromEntries(allBooks.map((b) => [b.id, b]));
+  const bookByDbId = Object.fromEntries(allBooks.map((b) => [b.dbId, b]));
   const TOTAL_CHAPTERS = allBooks.reduce((sum, b) => sum + b.chapters, 0);
+
+  // ---- Bijbeltekst-cache (localStorage) ------------------------------
+  // Sleutel: `${dbId}.${chapter}` -> { verseNumber: text }
+  const VERSES_CACHE_KEY = 'bijbel.verses.v1';
+  function loadVersesCache() {
+    try { return JSON.parse(localStorage.getItem(VERSES_CACHE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function saveVersesCache(cache) {
+    try { localStorage.setItem(VERSES_CACHE_KEY, JSON.stringify(cache)); }
+    catch (e) { console.warn('verses cache full', e); }
+  }
+  const versesCache = loadVersesCache();
+  // Welke hoofdstukken zijn beschikbaar in de DB (per dbId een Set)
+  const availableChapters = {};
 
   // ---- Supabase client ------------------------------------------------
   const SUPABASE_URL = 'https://kgfbjcecvwaumauhqhpg.supabase.co';
@@ -184,21 +200,79 @@
     `;
   }
 
+  // ---- Bijbeltekst ophalen uit Supabase ------------------------------
+  async function fetchChapterFromDb(book, chapter) {
+    const cacheKey = `${book.dbId}.${chapter}`;
+    if (versesCache[cacheKey]) return versesCache[cacheKey];
+    if (!sb) return null;
+    const { data, error } = await sb
+      .from('verzen')
+      .select('vers, tekst')
+      .eq('boek_id', book.dbId)
+      .eq('hoofdstuk', chapter)
+      .order('vers', { ascending: true });
+    if (error) { console.warn('fetch verzen', error); return null; }
+    if (!data || data.length === 0) return null;
+    const verses = {};
+    data.forEach((row) => { verses[row.vers] = row.tekst; });
+    versesCache[cacheKey] = verses;
+    saveVersesCache(versesCache);
+    return verses;
+  }
+
+  async function loadAvailableChapters() {
+    if (!sb) return;
+    // Eén lichte query: per (boek_id, hoofdstuk) één rij. De index is op vers=1
+    // niet gegarandeerd, dus filteren we expliciet.
+    const { data, error } = await sb
+      .from('verzen')
+      .select('boek_id, hoofdstuk')
+      .eq('vers', 1);
+    if (error) { console.warn('fetch availability', error); return; }
+    (data || []).forEach((row) => {
+      if (!availableChapters[row.boek_id]) availableChapters[row.boek_id] = new Set();
+      availableChapters[row.boek_id].add(row.hoofdstuk);
+    });
+  }
+
+  function chapterHasText(book, chapter) {
+    return availableChapters[book.dbId]?.has(chapter) ?? false;
+  }
+
   // ---- Home: vers van de dag + overall progress ----------------------
-  function renderDailyVerse() {
-    const dayIndex = Math.floor(Date.now() / 86400000) % DAILY_VERSES.length;
-    const entry = DAILY_VERSES[dayIndex];
-    const [chapterKey, verseNum] = entry.ref.split(':');
-    const chapter = BIBLE_TEXT[chapterKey];
-    const text = chapter && chapter[verseNum];
+  function parseRef(entry) {
+    const [chapterKey, verseNumStr] = entry.ref.split(':');
+    const [bookId, chapterStr] = chapterKey.split('.');
+    return { book: bookById[bookId], chapter: Number(chapterStr), verseNum: Number(verseNumStr) };
+  }
+
+  function pickDailyVerseEntry() {
+    const dayIndex = Math.floor(Date.now() / 86400000);
+    const available = DAILY_VERSES.filter((e) => {
+      const { book, chapter } = parseRef(e);
+      return book && availableChapters[book.dbId]?.has(chapter);
+    });
+    const pool = available.length > 0 ? available : DAILY_VERSES;
+    return pool[dayIndex % pool.length];
+  }
+
+  async function renderDailyVerse() {
+    const entry = pickDailyVerseEntry();
+    const { book, chapter, verseNum } = parseRef(entry);
 
     const el = $('#daily-verse');
+    el.querySelector('p').textContent = 'Vers van de dag wordt geladen…';
+    el.querySelector('cite').textContent = '';
+
+    if (!book) return;
+    const verses = await fetchChapterFromDb(book, chapter);
+    const text = verses && verses[verseNum];
     if (text) {
       el.querySelector('p').textContent = text;
       el.querySelector('cite').textContent = '— ' + entry.bookName;
     } else {
-      el.querySelector('p').textContent = 'Vers van de dag wordt binnenkort geladen.';
-      el.querySelector('cite').textContent = '';
+      el.querySelector('p').textContent = 'Vers van de dag is nog niet beschikbaar.';
+      el.querySelector('cite').textContent = '— ' + entry.bookName;
     }
   }
 
@@ -281,7 +355,7 @@
     for (let i = 1; i <= book.chapters; i++) {
       const btn = document.createElement('button');
       btn.textContent = i;
-      if (BIBLE_TEXT[`${book.id}.${i}`]) btn.classList.add('has-text');
+      if (chapterHasText(book, i)) btn.classList.add('has-text');
       if (isRead(book.id, i)) btn.classList.add('is-read');
       else if (isVisited(book.id, i)) btn.classList.add('is-visited');
       btn.addEventListener('click', () => openChapter(book, i));
@@ -290,16 +364,30 @@
   }
 
   // ---- Reader --------------------------------------------------------
-  function openChapter(book, chapter) {
+  async function openChapter(book, chapter) {
     state.currentBook = book;
     state.currentChapter = chapter;
     markVisited(book.id, chapter);
     saveLastRead(book.id, chapter);
     $('#reader-title').textContent = `${book.name} ${chapter}`;
 
-    const key = `${book.id}.${chapter}`;
-    const verses = BIBLE_TEXT[key];
     const container = $('#reader-content');
+    container.innerHTML = '';
+
+    $('#prev-chapter').disabled = chapter <= 1;
+    $('#next-chapter').disabled = chapter >= book.chapters;
+    updateMarkButton();
+    container.scrollTop = 0;
+    show('reader');
+
+    const loading = document.createElement('p');
+    loading.className = 'placeholder';
+    loading.textContent = 'Tekst wordt geladen…';
+    container.appendChild(loading);
+
+    const verses = await fetchChapterFromDb(book, chapter);
+    // Negeer als de gebruiker inmiddels naar een ander hoofdstuk is genavigeerd
+    if (state.currentBook?.id !== book.id || state.currentChapter !== chapter) return;
     container.innerHTML = '';
 
     if (verses) {
@@ -309,7 +397,11 @@
         .forEach((vn) => {
           const p = document.createElement('p');
           p.className = 'verse';
-          p.innerHTML = `<span class="verse-num">${vn}</span>` + verses[vn];
+          const numSpan = document.createElement('span');
+          numSpan.className = 'verse-num';
+          numSpan.textContent = vn;
+          p.appendChild(numSpan);
+          p.appendChild(document.createTextNode(verses[vn]));
           container.appendChild(p);
         });
     } else {
@@ -318,13 +410,6 @@
       ph.textContent = 'Tekst van dit hoofdstuk is nog niet toegevoegd.';
       container.appendChild(ph);
     }
-
-    $('#prev-chapter').disabled = chapter <= 1;
-    $('#next-chapter').disabled = chapter >= book.chapters;
-    updateMarkButton();
-    container.scrollTop = 0;
-
-    show('reader');
   }
 
   function updateMarkButton() {
@@ -554,4 +639,11 @@
   renderContinueReading();
   renderBooksForTab();
   show('home');
+
+  loadAvailableChapters().then(() => {
+    renderDailyVerse();
+    if ($('#chapters-view').classList.contains('active') && state.currentBook) {
+      renderChaptersGrid();
+    }
+  });
 })();
