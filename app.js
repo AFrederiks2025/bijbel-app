@@ -86,6 +86,7 @@
   const LAST_READ_KEY = 'bijbel.lastread.v1';
   const state = {
     currentTab: 'ALL', // 'OT' | 'ALL' | 'NT'
+    sortMode: 'traditional', // 'traditional' | 'alphabetical'
     currentBook: null,
     currentChapter: null,
   };
@@ -189,6 +190,11 @@
     if (state.currentTab === 'OT') books = BIBLE_BOOKS.OT;
     else if (state.currentTab === 'NT') books = BIBLE_BOOKS.NT;
     else books = allBooks;
+    if (state.sortMode === 'alphabetical') {
+      books = [...books].sort((a, b) =>
+        a.name.localeCompare(b.name, 'nl', { sensitivity: 'base' })
+      );
+    }
     books.forEach((book) => {
       list.appendChild(buildBookListItem(book, () => openBook(book)));
     });
@@ -318,6 +324,16 @@
       $$('.tab-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       state.currentTab = btn.dataset.tab;
+      renderBooksForTab();
+    });
+  });
+
+  $$('.sort-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.sortMode = btn.dataset.sort;
+      $$('.sort-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.sort === state.sortMode);
+      });
       renderBooksForTab();
     });
   });

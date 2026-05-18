@@ -191,6 +191,34 @@ button {
   flex: 1 1 auto;
 }
 
+/* ============ Sort toggle (Traditioneel / Alfabetisch) ============ */
+.sort-toggle {
+  display: inline-flex;
+  background: rgba(255,255,255,0.07);
+  border-radius: 999px;
+  padding: 4px;
+  align-self: center;
+  width: min(360px, calc(100% - 36px));
+  gap: 0;
+  flex-shrink: 0;
+}
+.sort-toggle-top { margin: 0 auto 10px; }
+.sort-toggle-bottom { margin: 10px auto calc(var(--safe-bottom) + 16px); }
+.sort-btn {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sort-btn.active {
+  background: rgba(255,255,255,0.14);
+  color: var(--text);
+}
+
 /* ============ Top tabs (OT / Alle / NT) ============ */
 .top-tabs {
   display: flex;
