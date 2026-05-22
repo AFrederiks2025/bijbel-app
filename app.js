@@ -223,16 +223,24 @@
   async function loadAvailableChapters() {
     if (!sb) return;
     // Eén lichte query: per (boek_id, hoofdstuk) één rij. De index is op vers=1
-    // niet gegarandeerd, dus filteren we expliciet.
-    const { data, error } = await sb
-      .from('verzen')
-      .select('boek_id, hoofdstuk')
-      .eq('vers', 1);
-    if (error) { console.warn('fetch availability', error); return; }
-    (data || []).forEach((row) => {
-      if (!availableChapters[row.boek_id]) availableChapters[row.boek_id] = new Set();
-      availableChapters[row.boek_id].add(row.hoofdstuk);
-    });
+    // niet gegarandeerd, dus filteren we expliciet. PostgREST levert max. 1000
+    // rijen per request, terwijl er 1189 hoofdstukken zijn — dus pagineren.
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await sb
+        .from('verzen')
+        .select('boek_id, hoofdstuk')
+        .eq('vers', 1)
+        .order('boek_id', { ascending: true })
+        .order('hoofdstuk', { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) { console.warn('fetch availability', error); return; }
+      (data || []).forEach((row) => {
+        if (!availableChapters[row.boek_id]) availableChapters[row.boek_id] = new Set();
+        availableChapters[row.boek_id].add(row.hoofdstuk);
+      });
+      if (!data || data.length < pageSize) break;
+    }
   }
 
   function chapterHasText(book, chapter) {
